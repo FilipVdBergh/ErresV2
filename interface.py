@@ -10,6 +10,7 @@ class Interface(object):
         self.player_name = player
         self.server = None
         self.player = None
+        self.all_players = []
         self.power = True
         self.mode = 0
         self.modes = {0: ["Now playing", "~[RIGHT]"],
@@ -18,6 +19,8 @@ class Interface(object):
                       3: ["Info", "~[FOLDER]"],
                       4: ["Sync", "~[SYNC]"],
                       -1: ["Off", " "]}
+        self.alert_pause = 2
+
 
         self.txtDateTime = libLCDUI.text(20,2)
         self.txtDateTime.format(libLCDUI.center)
@@ -30,11 +33,11 @@ class Interface(object):
         self.txtVolumeValue = libLCDUI.text(2,1)
         self.txtNowPlaying = libLCDUI.text(18,3)
         self.lstFavorites = libLCDUI.list(18,4)
-        self.lstFavorites.set_indicator("~[RIGHTANDLINE]", "~[RIGHTNOLINE]")
+        self.lstFavorites.set_indicator("~[RIGHT_SMALL]", " ")
         self.lstTechnicalInfo = libLCDUI.list(18, 4)
-        self.lstTechnicalInfo.set_indicator("~[RIGHTANDLINE]", "~[RIGHTNOLINE]")
+        self.lstTechnicalInfo.set_indicator("~[RIGHT_SMALL]", " ")
         self.lstPlayers = libLCDUI.list(18,4)
-        self.lstPlayers.set_indicator("~[RIGHTANDLINE]", "~[RIGHTNOLINE]")
+        self.lstPlayers.set_indicator("~[RIGHT_SMALL]", " ")
         self.txtTrackCounter = libLCDUI.text(18, 1)
         self.txtTrackCounter.format(libLCDUI.right)
         self.txtTimeCounter = libLCDUI.text(18, 1)
@@ -77,7 +80,7 @@ class Interface(object):
         self.connect()
 
     def connect(self):
-        self.txtAlert.write(["Connecting to server", self.server_address])
+        self.txtAlert.write(["Connecting to", self.server_address])
         self.txtAlert.show()
         success = False
         while not(success):
@@ -88,7 +91,7 @@ class Interface(object):
                 success = True
             except:
                 time.sleep(pauseBetweenRetries)
-        self.txtAlert.write(["Connecting to player", self.player_name])
+        self.txtAlert.write(["Registering player", self.player_name])
         success = False
         while not(success):
             self.ui.redraw()
@@ -97,8 +100,10 @@ class Interface(object):
                 success = True
             except:
                 time.sleep(pauseBetweenRetries)
+        self.txtAlert.write("Getting list of players")
+        self.all_players = self.server.get_players()
         self.txtAlert.write("Connected")
-        self.txtAlert.start_countdown(3)
+        self.txtAlert.start_countdown(self.alert_pause)
         self.redraw()
 
     def is_connected(self):
@@ -116,7 +121,7 @@ class Interface(object):
 
     def change_mode_by(self, step):
         self.mode += step
-        if self.mode >= max(self.modes):
+        if self.mode > max(self.modes):
             self.mode = 0
         if self.mode < 0:
             self.mode = max(self.modes)
@@ -185,6 +190,12 @@ class Interface(object):
             self.lstTechnicalInfo.add_item("Mode  : "+self.player.get_mode())
             self.lstTechnicalInfo.add_item("Server: "+self.server_address)
 
+        if self.mode == 4:
+            self.lstPlayers.clear()
+            for p in self.all_players:
+                self.lstPlayers.add_item(p.get_name())
+
+
     def user_input(self, button, value):
         # This function  handles all user input (button presses and turns).
         if button == 1:
@@ -197,13 +208,23 @@ class Interface(object):
                     self.change_mode_to(-1)
         elif button == 2:
             if self.is_connected():
+                if self.mode == 0:
+                    self.player.toggle()
+                if self.mode == 1:
+                    self.player.toggle()
                 if self.mode == 2:
                     print self.lstFavorites.get_selected()
                 if self.mode == 3:
                     self.show_info(self.lstTechnicalInfo.get_selected())
                 if self.mode == 4:
-                    print self.lstPlayers.get_selected()
-            time.sleep(0.15)
+                    if self.player.is_synced():
+                        self.player.unsync()
+                        self.txtAlert.write("Unsynced player")
+                    else:
+                        self.all_players[self.lstPlayers.get_selected()].sync_to(self.player.get_ref())
+                        self.txtAlert.write("Synced to %s" % self.all_players[self.lstPlayers.get_selected()].get_name())
+                    self.change_mode_to(0)
+                    self.txtAlert.start_countdown(self.alert_pause)
         elif button == 3:
                 self.change_mode_to(0)
         elif button == 4:
@@ -239,9 +260,9 @@ class Interface(object):
         elif button == 6:
             if self.is_connected():
                 if value > 0:
-                    self.change_mode_by(1)
-                else:
                     self.change_mode_by(-1)
+                else:
+                    self.change_mode_by(+1)
 
     def redraw(self):
         if self.is_connected():
