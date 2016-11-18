@@ -67,12 +67,12 @@ class Interface(object):
                         3: [self.icoMode, self.barVolume, self.lstTechnicalInfo],
                         4: [self.icoMode, self.barVolume, self.lstPlayers],
                         -1: [self.txtDateTime]}
-        self.colors  = {0: [LCD_red, LCD_blue, LCD_green],
-                        1: [LCD_red, LCD_blue, LCD_green],
-                        2: [LCD_red, LCD_blue, LCD_green],
-                        3: [LCD_red, LCD_blue, LCD_green],
-                        4: [LCD_red, LCD_blue, LCD_green],
-                        -1: [LCD_off_red, LCD_off_blue, LCD_off_green]}
+        self.colors  = {0: [LCD_red, LCD_green, LCD_blue],
+                        1: [LCD_red, LCD_green, LCD_blue],
+                        2: [LCD_red, LCD_green, LCD_blue],
+                        3: [LCD_red, LCD_green, LCD_blue],
+                        4: [LCD_red, LCD_green, LCD_blue],
+                        -1: [LCD_off_red, LCD_off_green, LCD_off_blue]}
         self.change_mode_to(0)
         self.connect()
 
