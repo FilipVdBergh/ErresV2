@@ -11,6 +11,7 @@ class Interface(object):
         self.server = None
         self.player = None
         self.all_players = []
+        self.all_favorites = []
         self.power = True
         self.mode = 0
         self.modes = {0: ["Now playing", "~[RIGHT]"],
@@ -100,8 +101,12 @@ class Interface(object):
                 success = True
             except:
                 time.sleep(pauseBetweenRetries)
+
+        # Populate several lists
         self.txtAlert.write("Getting list of players")
         self.all_players = self.server.get_players()
+        self.all_favorites = self.server.get_favorites()
+        print self.all_favorites
         self.txtAlert.write("Connected")
         self.txtAlert.start_countdown(self.alert_pause)
         self.redraw()
@@ -180,6 +185,11 @@ class Interface(object):
             else:
                 widget.hide()
 
+        if self.mode == 2:
+            self.lstFavorites.clear()
+            for f in self.all_favorites:
+                self.lstFavorites.add_item(f['name'])
+
         if self.mode == 3:
             self.lstTechnicalInfo.clear()
             self.lstTechnicalInfo.add_item("Artist: "+self.player.get_track_artist())
@@ -194,7 +204,6 @@ class Interface(object):
             self.lstPlayers.clear()
             for p in self.all_players:
                 self.lstPlayers.add_item(p.get_name())
-
 
     def user_input(self, button, value):
         # This function  handles all user input (button presses and turns).
@@ -213,7 +222,10 @@ class Interface(object):
                 if self.mode == 1:
                     self.player.toggle()
                 if self.mode == 2:
-                    print self.lstFavorites.get_selected()
+                    self.player.playlist_play(self.all_favorites[self.lstFavorites.get_selected()]['url'])
+                    self.txtAlert.write("Selected %s" % self.all_favorites[self.lstFavorites.get_selected()]['name'])
+                    self.change_mode_to(0)
+                    self.txtAlert.start_countdown(self.alert_pause)
                 if self.mode == 3:
                     self.show_info(self.lstTechnicalInfo.get_selected())
                 if self.mode == 4:
@@ -265,6 +277,12 @@ class Interface(object):
                     self.change_mode_by(+1)
 
     def redraw(self):
+        if not self.player.get_power_state():
+            self.change_mode_to(-1)
+        else:
+            if self.get_mode() == -1:
+                self.change_mode_to(0)
+                self.player.play()
         if self.is_connected():
             self.txtDateTime.write("- %s -" % self.player_name)
             self.txtNowPlaying.write("%s by %s" % (self.player.get_track_title(), self.player.get_track_artist()))

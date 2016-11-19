@@ -20,25 +20,24 @@ lcd.set_color(LCD_red, LCD_green, LCD_blue)
 erres_radio = interface.Interface(lcd, lms_server, lms_player)
 erres_radio.ui.print_all()
 
+#print erres_radio.server.get_favorites()
+
 while True:
     # Get all inputs
     RE1_delta = RE1.get_delta()
     RE2_delta = RE2.get_delta()
     RE3_delta = RE3.get_delta()
-    RE1_press = RE1.get_button()
-    RE2_press = RE2.get_button()
-    RE3_press = RE3.get_button()
 
     # Button behavior. 1-3 are pushbuttons, 4-6 are rotary encoders
-    if RE1_press:
+    if RE1.get_button():
         erres_radio.user_input(1, True)
     if RE1_delta != 0:
         erres_radio.user_input(4, RE1_delta)
-    if RE2_press:
+    if RE2.get_button():
         erres_radio.user_input(2, True)
     if RE2_delta != 0:
         erres_radio.user_input(5, RE2_delta)
-    if RE3_press:
+    if RE3.get_button():
         erres_radio.user_input(3, True)
     if RE3_delta != 0:
         erres_radio.user_input(6, RE3_delta)
