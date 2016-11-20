@@ -20,7 +20,6 @@ lcd.set_color(LCD_red, LCD_green, LCD_blue)
 erres_radio = interface.Interface(lcd, lms_server, lms_player)
 erres_radio.ui.print_all()
 
-#print erres_radio.server.get_favorites()
 
 while True:
     # Get all inputs

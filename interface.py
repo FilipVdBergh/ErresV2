@@ -14,10 +14,10 @@ class Interface(object):
         self.all_favorites = []
         self.power = True
         self.mode = 0
-        self.modes = {0: ["Now playing", "~[RIGHT]"],
-                      1: ["Skip", "~[NOTE]"],
+        self.modes = {0: ["Now playing", "~[NOTE]"],
+                      1: ["Playlist", "~[FOLDER]"],
                       2: ["Favorites", "~[HEART]"],
-                      3: ["Info", "~[FOLDER]"],
+                      3: ["Info", "~[INFO]"],
                       4: ["Sync", "~[SYNC]"],
                       -1: ["Off", " "]}
         self.alert_pause = 2
@@ -27,22 +27,26 @@ class Interface(object):
         self.txtDateTime.format(libLCDUI.center)
         self.icoMode = libLCDUI.text(1,1)
         self.barVolume = libLCDUI.vertical_progress_bar(1,3,0,100)
+
         self.txtVolumeOverlay = libLCDUI.text(20,4)
         self.txtVolumeOverlay.format(libLCDUI.center)
         self.txtVolumeOverlay.write(["","Volume","",""])
         self.barVolumeLarge = libLCDUI.horizontal_progress_bar(16,1,0,100)
         self.txtVolumeValue = libLCDUI.text(2,1)
+
         self.txtNowPlaying = libLCDUI.text(18,3)
-        self.lstFavorites = libLCDUI.list(18,4)
-        self.lstFavorites.set_indicator("~[RIGHT_SMALL]", " ")
-        self.lstTechnicalInfo = libLCDUI.list(18, 4)
-        self.lstTechnicalInfo.set_indicator("~[RIGHT_SMALL]", " ")
-        self.lstPlayers = libLCDUI.list(18,4)
-        self.lstPlayers.set_indicator("~[RIGHT_SMALL]", " ")
-        self.txtTrackCounter = libLCDUI.text(18, 1)
-        self.txtTrackCounter.format(libLCDUI.right)
         self.txtTimeCounter = libLCDUI.text(18, 1)
         self.txtTimeCounter.format(libLCDUI.right)
+
+        self.lstPlaylist = libLCDUI.list(19,4)
+        self.barPlaylist = libLCDUI.horizontal_position_bar(18,1,0,10)
+
+        self.lstFavorites = libLCDUI.list(19,4)
+
+        self.lstTechnicalInfo = libLCDUI.list(19, 4)
+
+        self.lstPlayers = libLCDUI.list(19,4)
+
         self.txtAlert = libLCDUI.text(18, 4)
 
         self.txtDateTime.hide()
@@ -55,10 +59,11 @@ class Interface(object):
         self.ui.add_widget(self.icoMode,0,0)
         self.ui.add_widget(self.barVolume,1,0)
         self.ui.add_widget(self.txtNowPlaying,0,2)
-        self.ui.add_widget(self.lstFavorites,0,2)
-        self.ui.add_widget(self.lstTechnicalInfo, 0, 2)
-        self.ui.add_widget(self.lstPlayers,0,2)
-        self.ui.add_widget(self.txtTrackCounter,3,2)
+        self.ui.add_widget(self.lstPlaylist,0,1)
+        self.ui.add_widget(self.barPlaylist,3,2)
+        self.ui.add_widget(self.lstFavorites,0,1)
+        self.ui.add_widget(self.lstTechnicalInfo, 0, 1)
+        self.ui.add_widget(self.lstPlayers,0,1)
         self.ui.add_widget(self.txtTimeCounter,3,2)
         self.ui.add_widget(self.txtVolumeOverlay,0,0)
         self.ui.add_widget(self.txtVolumeValue, 2, 0)
@@ -66,7 +71,7 @@ class Interface(object):
         self.ui.add_widget(self.txtAlert,0,2)
 
         self.layouts = {0: [self.icoMode, self.barVolume, self.txtNowPlaying, self.txtTimeCounter],
-                        1: [self.icoMode, self.barVolume, self.txtNowPlaying, self.txtTrackCounter],
+                        1: [self.icoMode, self.barVolume, self.lstPlaylist], # , self.barPlaylist],
                         2: [self.icoMode, self.barVolume, self.lstFavorites],
                         3: [self.icoMode, self.barVolume, self.lstTechnicalInfo],
                         4: [self.icoMode, self.barVolume, self.lstPlayers],
@@ -102,11 +107,19 @@ class Interface(object):
             except:
                 time.sleep(pauseBetweenRetries)
 
-        # Populate several lists
+        # Populate several lists. This is only done when reconnecting, so if a new player appears in the network,
+        # this is not updated. Same is true for favorites.
         self.txtAlert.write("Getting list of players")
         self.all_players = self.server.get_players()
+        self.lstPlayers.clear()
+        for p in self.all_players:
+            self.lstPlayers.add_item(p.get_name())
+
         self.all_favorites = self.server.get_favorites()
-        print self.all_favorites
+        self.lstFavorites.clear()
+        for f in self.all_favorites:
+            self.lstFavorites.add_item(f['name'])
+
         self.txtAlert.write("Connected")
         self.txtAlert.start_countdown(self.alert_pause)
         self.redraw()
@@ -122,7 +135,6 @@ class Interface(object):
         if mode in self.modes:
             self.mode = mode
             self.change_layout()
-
 
     def change_mode_by(self, step):
         self.mode += step
@@ -170,6 +182,7 @@ class Interface(object):
             self.txtAlert.write(self.player.get_mode())
         elif i == 6:
             self.txtAlert.write(self.server_address)
+
         self.txtAlert.start_countdown(3)
 
     def change_layout(self):
@@ -178,19 +191,23 @@ class Interface(object):
         # Change the icon to the icon for the current mode:
         self.icoMode.write([self.modes[self.mode][1]])
 
-        # Enable widgets in the current layout and disable the rest:
+        # Enable only widgets in the current layout and disable the rest:
         for widget in self.ui.list_widgets():
             if widget in self.layouts[self.mode]:
                 widget.show()
             else:
                 widget.hide()
 
-        if self.mode == 2:
-            self.lstFavorites.clear()
-            for f in self.all_favorites:
-                self.lstFavorites.add_item(f['name'])
+        #Populate some lists
+        if self.get_mode(by_name=True) == "Playlist":
+            playlist = self.player.playlist_get_info()
+            self.lstPlaylist.clear()
+            for i in playlist:
+                self.lstPlaylist.add_item(i['title'])
+            self.barPlaylist.set_maximum_value(self.player.playlist_track_count())
+            self.lstPlaylist.set_listindex(self.player.playlist_current_track_index()-1)
 
-        if self.mode == 3:
+        if self.get_mode(by_name=True) == "Info":
             self.lstTechnicalInfo.clear()
             self.lstTechnicalInfo.add_item("Artist: "+self.player.get_track_artist())
             self.lstTechnicalInfo.add_item("Title : "+self.player.get_track_title())
@@ -199,11 +216,6 @@ class Interface(object):
             self.lstTechnicalInfo.add_item("IP    : "+self.player.get_ip_address())
             self.lstTechnicalInfo.add_item("Mode  : "+self.player.get_mode())
             self.lstTechnicalInfo.add_item("Server: "+self.server_address)
-
-        if self.mode == 4:
-            self.lstPlayers.clear()
-            for p in self.all_players:
-                self.lstPlayers.add_item(p.get_name())
 
     def user_input(self, button, value):
         # This function  handles all user input (button presses and turns).
@@ -217,18 +229,19 @@ class Interface(object):
                     self.change_mode_to(-1)
         elif button == 2:
             if self.is_connected():
-                if self.mode == 0:
+                if self.get_mode(by_name=True) == "Now playing":
                     self.player.toggle()
-                if self.mode == 1:
-                    self.player.toggle()
-                if self.mode == 2:
+                if self.get_mode(by_name=True) == "Playlist":
+                    self.player.playlist_play_index(self.lstPlaylist.get_selected())
+                    self.change_mode_to(0)
+                if self.get_mode(by_name=True) == "Favorites":
                     self.player.playlist_play(self.all_favorites[self.lstFavorites.get_selected()]['url'])
                     self.txtAlert.write("Selected %s" % self.all_favorites[self.lstFavorites.get_selected()]['name'])
                     self.change_mode_to(0)
                     self.txtAlert.start_countdown(self.alert_pause)
-                if self.mode == 3:
+                if self.get_mode(by_name=True) == "Info":
                     self.show_info(self.lstTechnicalInfo.get_selected())
-                if self.mode == 4:
+                if self.get_mode(by_name=True) == "Sync":
                     if self.player.is_synced():
                         self.player.unsync()
                         self.txtAlert.write("Unsynced player")
@@ -244,27 +257,27 @@ class Interface(object):
                 self.change_volume(value)
         elif button == 5:
             if self.is_connected():
-                if self.mode == 0:
+                if self.get_mode(by_name=True) == "Now playing":
                     if value > 0:
                         self.player.forward(30)
                     else:
                         self.player.rewind(30)
-                elif self.mode == 1:
+                elif self.get_mode(by_name=True) == "Playlist":
                     if value > 0:
-                        self.player.next()
+                        self.lstPlaylist.move_down()
                     else:
-                        self.player.prev()
-                elif self.mode == 2:
+                        self.lstPlaylist.move_up()
+                elif self.get_mode(by_name=True) == "Favorites":
                     if value > 0:
                         self.lstFavorites.move_down()
                     else:
                         self.lstFavorites.move_up()
-                elif self.mode == 3:
+                elif self.get_mode(by_name=True) == "Info":
                     if value > 0:
                         self.lstTechnicalInfo.move_down()
                     else:
                         self.lstTechnicalInfo.move_up()
-                elif self.mode == 4:
+                elif self.get_mode(by_name=True) == "Sync":
                     if value > 0:
                         self.lstPlayers.move_down()
                     else:
@@ -280,7 +293,7 @@ class Interface(object):
         if not self.player.get_power_state():
             self.change_mode_to(-1)
         else:
-            if self.get_mode() == -1:
+            if self.get_mode(by_name=True) == "Off":
                 self.change_mode_to(0)
                 self.player.play()
         if self.is_connected():
@@ -289,12 +302,12 @@ class Interface(object):
             self.barVolumeLarge.write(self.player.get_volume())
             self.barVolume.write(self.player.get_volume())
             self.txtVolumeValue.write(self.player.get_volume())
-            self.txtTrackCounter.write("~[LEFT]%s/%s~[RIGHT]" % (self.player.playlist_current_track_index(), self.player.playlist_track_count()))
+            self.barPlaylist.write(self.player.playlist_current_track_index())
             self.txtTimeCounter.write("~[LEFT]%s/%s~[RIGHT]" % (self.time_format(self.player.get_time_elapsed()), self.time_format(self.player.get_track_duration())))
         self.ui.redraw()
 
     def time_format(self, duration):
         if duration > 3600:
-            return time.strftime("%-H:", time.gmtime(duration))
+            return time.strftime("%-H:%M", time.gmtime(duration))
         else:
             return time.strftime("%M:%S", time.gmtime(duration))
