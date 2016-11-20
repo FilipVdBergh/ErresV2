@@ -21,7 +21,9 @@ class Interface(object):
                       4: ["Sync", "~[SYNC]"],
                       -1: ["Off", " "]}
         self.alert_pause = 2
-
+        self.counter_modes = {0: "Time",
+                              1: "Tracks"}
+        self.counter_mode = 0
 
         self.txtDateTime = libLCDUI.text(20,2)
         self.txtDateTime.format(libLCDUI.center)
@@ -35,8 +37,8 @@ class Interface(object):
         self.txtVolumeValue = libLCDUI.text(2,1)
 
         self.txtNowPlaying = libLCDUI.text(18,3)
-        self.txtTimeCounter = libLCDUI.text(18, 1)
-        self.txtTimeCounter.format(libLCDUI.right)
+        self.txtCounter = libLCDUI.text(18, 1)
+        self.txtCounter.format(libLCDUI.right)
 
         self.lstPlaylist = libLCDUI.list(19,4)
         self.barPlaylist = libLCDUI.horizontal_position_bar(18,1,0,10)
@@ -64,14 +66,14 @@ class Interface(object):
         self.ui.add_widget(self.lstFavorites,0,1)
         self.ui.add_widget(self.lstTechnicalInfo, 0, 1)
         self.ui.add_widget(self.lstPlayers,0,1)
-        self.ui.add_widget(self.txtTimeCounter,3,2)
+        self.ui.add_widget(self.txtCounter, 3, 2)
         self.ui.add_widget(self.txtVolumeOverlay,0,0)
         self.ui.add_widget(self.txtVolumeValue, 2, 0)
         self.ui.add_widget(self.barVolumeLarge, 2, 3)
         self.ui.add_widget(self.txtAlert,0,2)
 
-        self.layouts = {0: [self.icoMode, self.barVolume, self.txtNowPlaying, self.txtTimeCounter],
-                        1: [self.icoMode, self.barVolume, self.lstPlaylist], # , self.barPlaylist],
+        self.layouts = {0: [self.icoMode, self.barVolume, self.txtNowPlaying, self.txtCounter],
+                        1: [self.icoMode, self.barVolume, self.lstPlaylist],
                         2: [self.icoMode, self.barVolume, self.lstFavorites],
                         3: [self.icoMode, self.barVolume, self.lstTechnicalInfo],
                         4: [self.icoMode, self.barVolume, self.lstPlayers],
@@ -143,6 +145,11 @@ class Interface(object):
         if self.mode < 0:
             self.mode = max(self.modes)
         self.change_layout()
+
+    def change_counter_mode(self):
+        self.counter_mode += 1
+        if self.counter_mode > max(self.counter_modes):
+            self.counter_mode = 0
 
     def get_mode(self, by_name=False):
         if by_name:
@@ -230,7 +237,7 @@ class Interface(object):
         elif button == 2:
             if self.is_connected():
                 if self.get_mode(by_name=True) == "Now playing":
-                    self.player.toggle()
+                    self.change_counter_mode()
                 if self.get_mode(by_name=True) == "Playlist":
                     self.player.playlist_play_index(self.lstPlaylist.get_selected())
                     self.change_mode_to(0)
@@ -303,7 +310,10 @@ class Interface(object):
             self.barVolume.write(self.player.get_volume())
             self.txtVolumeValue.write(self.player.get_volume())
             self.barPlaylist.write(self.player.playlist_current_track_index())
-            self.txtTimeCounter.write("~[LEFT]%s/%s~[RIGHT]" % (self.time_format(self.player.get_time_elapsed()), self.time_format(self.player.get_track_duration())))
+            if self.counter_mode == 0:
+                self.txtCounter.write("~[LEFT]%s/%s~[RIGHT]" % (self.time_format(self.player.get_time_elapsed()), self.time_format(self.player.get_track_duration())))
+            elif self.counter_mode == 1:
+                self.txtCounter.write("%s of %s" % (self.player.playlist_current_track_index(), self.player.playlist_track_count()))
         self.ui.redraw()
 
     def time_format(self, duration):
