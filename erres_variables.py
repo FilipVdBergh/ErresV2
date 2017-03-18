@@ -1,7 +1,6 @@
 # LMS variables
 lms_server = "192.168.178.4"
-lms_player = "sb2-erres"
-favoritesFile = "erres_favorites"
+lms_player = "sb2-keuken"
 pauseBetweenRetries = 5
 retriesBeforeFailure = 10
 
@@ -32,7 +31,7 @@ RE3B = 13
 # LCD colors
 LCD_red = 1.0
 LCD_green = 1.0
-LCD_blue = 0.0
+LCD_blue = 1.0
 
 LCD_off_red = 0.0
 LCD_off_green = 0.0

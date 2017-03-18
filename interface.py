@@ -25,8 +25,8 @@ class Interface(object):
                               1: "Tracks"}
         self.counter_mode = 0
 
-        self.txtDateTime = libLCDUI.text(20,2)
-        self.txtDateTime.format(libLCDUI.center)
+        self.txtOff = libLCDUI.text(20, 2)
+        self.txtOff.format(libLCDUI.center)
         self.icoMode = libLCDUI.text(1,1)
         self.barVolume = libLCDUI.vertical_progress_bar(1,3,0,100)
 
@@ -51,13 +51,13 @@ class Interface(object):
 
         self.txtAlert = libLCDUI.text(18, 4)
 
-        self.txtDateTime.hide()
+        self.txtOff.hide()
         self.txtAlert.hide()
         self.barVolumeLarge.hide()
         self.txtVolumeOverlay.hide()
         self.txtVolumeValue.hide()
 
-        self.ui.add_widget(self.txtDateTime,1,0)
+        self.ui.add_widget(self.txtOff, 1, 0)
         self.ui.add_widget(self.icoMode,0,0)
         self.ui.add_widget(self.barVolume,1,0)
         self.ui.add_widget(self.txtNowPlaying,0,2)
@@ -77,7 +77,7 @@ class Interface(object):
                         2: [self.icoMode, self.barVolume, self.lstFavorites],
                         3: [self.icoMode, self.barVolume, self.lstTechnicalInfo],
                         4: [self.icoMode, self.barVolume, self.lstPlayers],
-                        -1: [self.txtDateTime]}
+                        -1: [self.txtOff]}
         self.colors  = {0: [LCD_red, LCD_green, LCD_blue],
                         1: [LCD_red, LCD_green, LCD_blue],
                         2: [LCD_red, LCD_green, LCD_blue],
@@ -99,19 +99,22 @@ class Interface(object):
                 success = True
             except:
                 time.sleep(pauseBetweenRetries)
-        self.txtAlert.write(["Registering player", self.player_name])
+        self.txtAlert.write(["Registering", self.player_name])
         success = False
         while not(success):
             self.ui.redraw()
             try:
                 self.player = self.server.get_player(self.player_name)
-                success = True
+                if self.player is not None:
+                    success = True
             except:
                 time.sleep(pauseBetweenRetries)
 
+
+
         # Populate several lists. This is only done when reconnecting, so if a new player appears in the network,
         # this is not updated. Same is true for favorites.
-        self.txtAlert.write("Getting list of players")
+        self.txtAlert.write("Getting list")
         self.all_players = self.server.get_players()
         self.lstPlayers.clear()
         for p in self.all_players:
@@ -124,6 +127,7 @@ class Interface(object):
 
         self.txtAlert.write("Connected")
         self.txtAlert.start_countdown(self.alert_pause)
+
         self.redraw()
 
     def is_connected(self):
@@ -304,16 +308,22 @@ class Interface(object):
                 self.change_mode_to(0)
                 self.player.play()
         if self.is_connected():
-            self.txtDateTime.write("- %s -" % self.player_name)
+            self.txtOff.write([self.player_name,self.player.get_ip_address()])
             self.txtNowPlaying.write("%s by %s" % (self.player.get_track_title(), self.player.get_track_artist()))
             self.barVolumeLarge.write(self.player.get_volume())
             self.barVolume.write(self.player.get_volume())
             self.txtVolumeValue.write(self.player.get_volume())
             self.barPlaylist.write(self.player.playlist_current_track_index())
             if self.counter_mode == 0:
-                self.txtCounter.write("~[LEFT]%s/%s~[RIGHT]" % (self.time_format(self.player.get_time_elapsed()), self.time_format(self.player.get_track_duration())))
+                if self.player.get_track_duration() > 0:
+                    self.txtCounter.write("~[LEFT]%s/%s~[RIGHT]" % (self.time_format(self.player.get_time_elapsed()), self.time_format(self.player.get_track_duration())))
+                else:
+                    self.txtCounter.write("~[LEFT]%s~[RIGHT]" % (self.time_format(self.player.get_time_elapsed())))
             elif self.counter_mode == 1:
-                self.txtCounter.write("%s of %s" % (self.player.playlist_current_track_index(), self.player.playlist_track_count()))
+                self.txtCounter.write("[%s of %s]" % (self.player.playlist_current_track_index(), self.player.playlist_track_count()))
+                if self.player.get_track_duration() == 0:
+                    self.txtCounter.write("stream")
+
         self.ui.redraw()
 
     def time_format(self, duration):
